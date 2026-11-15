@@ -172,4 +172,6 @@ Credentials should be configured within n8n and must not be committed to the rep
 
 ---
 
-*This project is intended as an experimental HR intelligence and analytics workflow. Examples used are for educational / experimental purposes. AI-generated findings should be treated as decision-support information this is NOT a replacement for human intuition or human judgment, when it comes to HR matters, the report is ment to aid you and not tell you what is the best strategy to solve your companie's HR problems, additional this is not definitive evidence of company-wide employee experiences.*
+*This project is intended as an experimental HR intelligence and analytics workflow. Examples used are for educational / experimental purposes.
+AI-generated findings should be treated as decision-support information this is NOT a replacement for human intuition or human judgment, when it comes to HR matters, 
+the report is meant to aid you and not tell you what is the best strategy to solve your companie's HR problems, additional this is not definitive evidence of company-wide employee experiences.*
