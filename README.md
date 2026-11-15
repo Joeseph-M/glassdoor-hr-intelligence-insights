@@ -1,7 +1,3 @@
-# Glassdoor HR Intelligence Insights | n8n, JavaScript, OpenAI AI-Agents
-
-Built an automated HR analytics workflow using n8n, JavaScript and LLMs to process employee reviews, identify recurring workplace themes, calculate quantitative HR metrics, and generate structured HR intelligence reports. Implemented automated report validation, duplicate review ID detection, and an AI-assisted correction workflow with a second validation stage.
-
 # Glassdoor HR Intelligence Insights
 
 An automated HR analytics workflow built with **n8n, JavaScript and Large Language Models (LLMs)** to transform employee reviews into structured HR intelligence reports.
