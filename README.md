@@ -28,6 +28,8 @@ The automation follows this sequence:
 10. **Second Validation** – Recheck the corrected report before approving it.
 11. **Report Export** – Convert the validated Markdown report into a downloadable `.md` file.
 
+![n8n Workflow Overview](screenshots/workflow.jpg)
+
 ## Technology Stack
 
 | Technology | Purpose |
