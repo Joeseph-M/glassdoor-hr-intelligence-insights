@@ -1,0 +1,733 @@
+{
+  "name": "Glassdoor HR Intelligence Insights",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Glassdoor HR Intelligence ",
+        "formDescription": "Analyse employee reviews and generate HR recommendations",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "=Company_URL",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Max_Reviews",
+              "fieldType": "number",
+              "defaultValue": "200"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "80acaabf-73c3-4467-8f7a-d141c9591881",
+      "name": "Glassdoor HR Insights (Company URL) ",
+      "webhookId": "3302b750-8d04-4080-9f1d-13b7fe6dc605"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6fa92e16-60d3-44e2-82d8-c549d560fc2a",
+              "name": "Company_URL",
+              "value": "={{ $json[\"Company_URL\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "e864fc85-ba79-4695-84b9-fd9b06b9dc42",
+              "name": "Max_Reviews",
+              "value": "={{ $json.Max_Reviews }}",
+              "type": "number"
+            },
+            {
+              "id": "afd67dfe-ef2d-4baa-81b9-571714b1ef4c",
+              "name": "Sort_Reviews_By",
+              "value": "DATE",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        192,
+        0
+      ],
+      "id": "96130907-0f4e-483f-a559-c56d67539a35",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "8F2l3z0gKCYBCF4Bc",
+          "mode": "list",
+          "cachedResultName": "Glassdoor Reviews & Jobs · No 200-Cap · AI Employer Intel (memo23/glassdoor-scraper-ppr)",
+          "cachedResultUrl": "https://console.apify.com/actors/8F2l3z0gKCYBCF4Bc/input"
+        },
+        "customBody": "={\n  \"command\": \"reviews\",\n  \"deepSearch\": false,\n  \"enrichEmails\": false,\n  \"includeAllReviews\": false,\n  \"includeAllSalaries\": false,\n  \"includeCompanyBenefitsStats\": false,\n  \"includeCompanyInterviewStats\": false,\n  \"includeCompanyReviewStats\": false,\n  \"matchKeywordInTitle\": false,\n  \"monitoringModeForReviews\": false,\n  \"painPointAnalysis\": false,\n  \"qualifyByPayment\": false,\n  \"resumeKeywords\": [],\n  \"reviewInsights\": false,\n  \"saveOnlyUniqueItems\": false,\n  \"searchJobsByKeyword\": false,\n  \"startUrls\": [\n    {\n      \"url\": \"{{ $json.Company_URL }}\"\n    }\n  ],\n  \"sortBy\": \"relevant_desc\",\n  \"maxDaysOld\": \"any\",\n  \"remoteWorkType\": \"any\",\n  \"applicationType\": \"any\",\n  \"jobType\": \"any\",\n  \"minRating\": \"any\",\n  \"employerSize\": \"any\",\n  \"radius\": \"any\",\n  \"industryNid\": \"any\",\n  \"sgocId\": \"any\",\n  \"sortReviewsBy\": \"{{ $json.Sort_Reviews_By }}\",\n  \"maxItems\": {{ $json.Max_Reviews }},\n  \"maxConcurrency\": 7,\n  \"minConcurrency\": 1,\n  \"maxRequestRetries\": 100\n}",
+        "timeout": 0,
+        "memory": 512,
+        "maxTotalChargeUsd": 1,
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "1f475acd-8d48-44ba-ab49-387307259f85",
+      "name": "Run an Actor",
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "pDy6KHKRmi2ar6Xv",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $json.defaultDatasetId }}",
+        "offset": {},
+        "limit": 200,
+        "options": {},
+        "authentication": "apifyOAuth2Api"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 2,
+      "position": [
+        688,
+        0
+      ],
+      "id": "cd0c3a19-bc07-410e-875e-acc100758050",
+      "name": "Get dataset items",
+      "credentials": {
+        "apifyOAuth2Api": {
+          "id": "pDy6KHKRmi2ar6Xv",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// 1. Retrieve all incoming Glassdoor reviews\nconst reviews = $input.all();\n\n// 2. Helper function to clean ratings\nconst cleanRating = (rating) => {\n  return rating === 0 || rating == null ? null : rating;\n};\n\n// 3. Clean and standardise the data\nconst cleanedReviews = reviews.map((item) => {\n\n  const review = item.json;\n\n  return {\n    json: {\n      // Company information\n      company: review.employer?.shortName ?? null,\n\n      // Review content\n      summary: review.summary ?? \"\",\n      pros: review.pros ?? \"\",\n      cons: review.cons ?? \"\",\n      advice: review.advice ?? \"\",\n\n      // Employee ratings\n      overall_rating: cleanRating(review.ratingOverall),\n      culture_rating: cleanRating(review.ratingCultureAndValues),\n      leadership_rating: cleanRating(review.ratingSeniorLeadership),\n      compensation_rating: cleanRating(review.ratingCompensationAndBenefits),\n      work_life_balance: cleanRating(review.ratingWorkLifeBalance),\n      career_opportunities: cleanRating(review.ratingCareerOpportunities),\n\n      // Employee sentiment indicators\n      business_outlook: review.ratingBusinessOutlook ?? null,\n      recommend_to_friend: review.ratingRecommendToFriend ?? null,\n\n      // Employee information\n      job_title: review.jobTitle?.text ?? null,\n      location: review.location?.name ?? null,\n      employment_length: review.lengthOfEmployment ?? null,\n\n      // Review metadata\n      review_date: review.reviewDateTime ?? null,\n      review_id: review.reviewId ?? null,\n      language: review.reviewLanguageCode ?? null\n    }\n  };\n});\n\n// 4. Return cleaned reviews\nreturn cleanedReviews;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        0
+      ],
+      "id": "7678f036-88ef-4185-b646-a4dcf674bf57",
+      "name": "Clean Reviews"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// 1. Retrieve all cleaned reviews\nconst reviews = $input.all().map(item => item.json);\n\n// 2. Helper function to calculate averages\nfunction calculateAverage(field) {\n  const values = reviews\n    .map(review => review[field])\n    .filter(value =>\n      value !== null &&\n      value !== undefined &&\n      value !== \"\" &&\n      Number.isFinite(Number(value))\n    )\n    .map(Number);\n\n  if (values.length === 0) return null;\n\n  const total = values.reduce((sum, value) => sum + value, 0);\n\n  return {\n    average: Number((total / values.length).toFixed(2)),\n    responses: values.length\n  };\n}\n\n// 3. Calculate rating distributions\nfunction calculateRatingDistribution(field) {\n  const distribution = {\n    \"1\": 0,\n    \"2\": 0,\n    \"3\": 0,\n    \"4\": 0,\n    \"5\": 0\n  };\n\n  reviews.forEach(review => {\n    const rating = review[field];\n\n    if (rating !== null && rating !== undefined &&\n        distribution[String(rating)] !== undefined) {\n      distribution[String(rating)]++;\n    }\n  });\n\n  return distribution;\n}\n\n// 4. Calculate sentiment distributions\nfunction calculateSentiment(field) {\n  const counts = {\n    positive: 0,\n    negative: 0,\n    neutral: 0,\n    missing: 0\n  };\n\n  reviews.forEach(review => {\n    const value = review[field]?.toUpperCase();\n\n    if (!value) {\n      counts.missing++;\n    } else if (value === \"POSITIVE\") {\n      counts.positive++;\n    } else if (value === \"NEGATIVE\") {\n      counts.negative++;\n    } else {\n      counts.neutral++;\n    }\n  });\n\n  return counts;\n}\n\n// 5. Calculate missing data\nfunction calculateMissing(field) {\n  return reviews.filter(review =>\n    review[field] === null ||\n    review[field] === undefined ||\n    review[field] === \"\"\n  ).length;\n}\n\n// 6. Compile HR analytics\nconst analysis = {\n  company: reviews[0]?.company ?? \"Unknown\",\n  total_reviews: reviews.length,\n\n  average_ratings: {\n    overall: calculateAverage(\"overall_rating\"),\n    culture: calculateAverage(\"culture_rating\"),\n    leadership: calculateAverage(\"leadership_rating\"),\n    compensation: calculateAverage(\"compensation_rating\"),\n    work_life_balance: calculateAverage(\"work_life_balance\"),\n    career_opportunities: calculateAverage(\"career_opportunities\")\n  },\n\n  overall_rating_distribution:\n    calculateRatingDistribution(\"overall_rating\"),\n\n  employee_recommendations:\n    calculateSentiment(\"recommend_to_friend\"),\n\n  business_outlook:\n    calculateSentiment(\"business_outlook\"),\n\n  missing_data: {\n    job_title: calculateMissing(\"job_title\"),\n    location: calculateMissing(\"location\"),\n    overall_rating: calculateMissing(\"overall_rating\"),\n    leadership_rating: calculateMissing(\"leadership_rating\"),\n    culture_rating: calculateMissing(\"culture_rating\"),\n    compensation_rating: calculateMissing(\"compensation_rating\"),\n    work_life_balance: calculateMissing(\"work_life_balance\"),\n    career_opportunities: calculateMissing(\"career_opportunities\")\n  }\n};\n\n// 7. Return one consolidated analysis object\nreturn [{ json: analysis }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        96
+      ],
+      "id": "5afc08e0-c72d-42d3-8f7b-12fb5d51861f",
+      "name": "Calculate Company Statistics"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n// Retrieve all cleaned employee reviews\nconst reviews = $input.all().map(item => item.json);\n\n// Set the number of reviews per batch\nconst batchSize = 20;\n\n// Calculate total batches\nconst totalBatches = Math.ceil(reviews.length / batchSize);\n\n// Split reviews into batches\nconst batches = [];\n\nfor (let i = 0; i < reviews.length; i += batchSize) {\n\n  const batch = reviews.slice(i, i + batchSize);\n\n  batches.push({\n    json: {\n      company: batch[0]?.company ?? \"Unknown\",\n      batch_number: batches.length + 1,\n      total_batches: totalBatches,\n      review_count: batch.length,\n      reviews: batch\n    }\n  });\n}\n\n// Send batches to the next node\nreturn batches;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        -80
+      ],
+      "id": "abb74016-390a-4558-a51b-31e9485df4b1",
+      "name": "Batch Reviews"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nYou are an experienced HR Employee Feedback Analyst.\n\nYour task is to analyse employee reviews from Glassdoor and identify recurring themes, positive experiences, complaints and potential HR concerns.\n\nCOMPANY:\n{{ $json.company }}\n\nBATCH:\n{{ $json.batch_number }} of {{ $json.total_batches }}\n\nNUMBER OF REVIEWS:\n{{ $json.review_count }}\n\nEMPLOYEE REVIEWS:\n{{ JSON.stringify($json.reviews) }}\n\nANALYSIS REQUIREMENTS:\n\n1. Identify recurring positive themes from employee feedback.\n2. Identify recurring negative themes and complaints.\n3. Categorise findings into relevant HR areas, such as:\n   - Leadership and Management\n   - Communication and Transparency\n   - Compensation and Benefits\n   - Career Development\n   - Work-Life Balance\n   - Company Culture\n   - Employee Engagement\n   - Organisational Structure\n4. Identify potential employee retention and attrition concerns.\n5. Identify isolated complaints separately from recurring themes.\n6. Provide supporting examples from the actual reviews.\n7. Include the review IDs associated with each finding.\n8. Do not invent findings, frequencies or supporting evidence.\n9. If there is insufficient evidence, explicitly state so.\n\nIMPORTANT:\nAnalyse only the reviews provided in this batch.\nDo not generate HR recommendations yet. That will be handled by a separate HR Strategy Analyst.\n\nReturn a structured analysis of the findings.\n\n\n## OUTPUT REQUIREMENTS\n\nStructure your response using the following sections:\n\n### 1. EXECUTIVE SUMMARY\nProvide a brief summary of employee feedback in this batch.\n\n### 2. POSITIVE THEMES\nIdentify recurring positive themes.\n\nInclude:\n- Theme\n- Number of supporting reviews\n- Supporting review IDs\n- Explanation\n\n### 3. NEGATIVE THEMES\nIdentify recurring complaints.\n\nInclude:\n- Theme\n- Number of supporting reviews\n- Supporting review IDs\n- Explanation\n\n### 4. HR CONCERNS\nIdentify potential concerns involving:\n- Leadership and Management\n- Communication and Transparency\n- Compensation and Benefits\n- Career Development\n- Work-Life Balance\n- Employee Engagement\n- Organisational Culture\n\nFor each concern, provide supporting evidence and review IDs.\n\n### 5. ISOLATED ISSUES\nIdentify complaints or positive observations that appear only once or have limited supporting evidence.\n\nDistinguish isolated incidents from recurring patterns.\n\n## IMPORTANT ANALYSIS RULES\n\n- Analyse only the reviews provided in this batch.\n- Do not generate HR recommendations yet. These will be handled by a separate HR Strategy Analyst.\n- Do not invent findings, frequencies, statistics or employee feedback.\n- Count supporting reviews based on actual reviews, not the number of times a phrase appears.\n- Include review IDs wherever possible.\n- Distinguish recurring themes from isolated complaints.\n- Do not assume missing information indicates negative sentiment.\n- Explicitly state when evidence is insufficient.\n- Do not generalise findings across the entire company based on one batch.\n- Return a structured analysis.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1376,
+        -208
+      ],
+      "id": "1f931aa8-fe3e-479b-9540-44491f8125c4",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5",
+          "mode": "list",
+          "cachedResultName": "gpt-5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        0
+      ],
+      "id": "4734a44f-6b41-4a82-b807-af7c140d0e51",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst analyses = $input.all();\n\nconst consolidatedInput = {\n  company: \"Castlery\",\n  total_batches: analyses.length,\n\n  batch_analyses: analyses.map((item, index) => ({\n    batch_number: index + 1,\n    analysis: item.json.text\n  }))\n};\n\nreturn [\n  {\n    json: consolidatedInput\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        -96
+      ],
+      "id": "253af3e2-b336-4a67-8df0-0cd86b98477b",
+      "name": "Consolidate Batch Analyses"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nYou are a Senior HR Strategy Consultant specialising\nin employee experience, organisational development,\nworkforce analytics and employee retention.\n\nOBJECTIVE:\n\nConduct a comprehensive company-wide HR analysis\nusing employee reviews collected from Glassdoor.\n\nYou will receive:\n1. Seven AI-generated batch analyses.\n2. Quantitative company statistics calculated\n   directly from the original employee reviews.\n\nCOMPANY INFORMATION:\n\nCompany:\n{{ $json.company }}\n\nTotal Batches:\n{{ $json.total_batches }}\n\nTotal Reviews:\n{{ $json.total_reviews }}\n\nBATCH ANALYSES:\n\n{{ JSON.stringify($json.batch_analyses) }}\n\nQUANTITATIVE COMPANY STATISTICS:\n\n{{ JSON.stringify({\n  total_reviews: $json.total_reviews,\n  average_ratings: $json.average_ratings,\n  overall_rating_distribution: $json.overall_rating_distribution,\n  employee_recommendations: $json.employee_recommendations,\n  business_outlook: $json.business_outlook,\n  missing_data: $json.missing_data\n}) }}\n\nANALYSIS REQUIREMENTS:\n\nEVIDENCE ACCURACY AND VALIDATION:\n\n1. Never estimate or approximate the number of\n   supporting employee reviews.\n\n2. Only provide exact supporting review counts\n   when they can be verified using unique review IDs.\n\n3. Deduplicate review IDs across all seven batches\n   before calculating company-wide counts.\n\n4. Never count the same review more than once\n   for the same theme.\n\n5. Every supporting review ID must originate\n   from the original employee review dataset.\n\n6. Do not invent review IDs or supporting evidence.\n\n7. If exact supporting counts cannot be established,\n   explicitly state \"Unable to verify exact count\".\n\n8. Distinguish between:\n   - Actual employee feedback\n   - Quantitative rating results\n   - Potential HR risks\n   - Management recommendations\n\n9. Do not claim that employee turnover has increased\n   unless actual turnover data is provided.\n\n10. Treat serious allegations as requiring\n    appropriate investigation, regardless of\n    how frequently they appear.\n\n11. Preserve contradictory feedback between\n    different teams, departments and roles.\n\n12. Do not describe Glassdoor ratings as above\n    or below the platform average unless an\n    appropriate benchmark is provided.\n\n\n1. POSITIVE THEMES\nIdentify recurring positive experiences across\nall seven batches.\n\n2. NEGATIVE THEMES\nIdentify recurring employee complaints and\nnegative experiences.\n\n3. KEY HR CONCERNS\nEvaluate concerns involving:\n- Leadership and management\n- Communication and transparency\n- Compensation and benefits\n- Career development\n- Work-life balance\n- Organisational culture\n- Employee engagement\n\n4. EMPLOYEE RETENTION RISKS\nIdentify factors that could contribute to:\n- Employee dissatisfaction\n- Reduced engagement\n- Employee turnover\n- Burnout\n- Difficulty retaining talent\n\n5. ISOLATED ISSUES\nIdentify complaints that appear infrequently.\nDistinguish these from recurring organisational\nproblems.\n\n6. QUANTITATIVE AND QUALITATIVE COMPARISON\n\nCompare the written employee feedback against\nthe numerical company statistics.\n\nIdentify:\n- HR areas with relatively low average ratings.\n- Positive or negative themes supported by ratings.\n- Discrepancies between numerical ratings and\n  written employee feedback.\n- Areas where insufficient rating responses\n  limit the reliability of conclusions.\n\n7. CROSS-BATCH CONSOLIDATION\n\nReconcile similar themes described differently\nacross the seven batches.\n\nDeduplicate review IDs when determining the\nnumber of unique supporting reviews.\n\nDo not add batch-level frequencies together\nwithout checking for duplicate review IDs.\n\nPreserve contradictory employee experiences\nwhere appropriate.\n\n8. EVIDENCE AND ACCURACY\n\n- Do not invent findings, frequencies or review IDs.\n- Do not treat missing ratings as negative ratings.\n- Distinguish observed evidence from interpretation.\n- Do not assume that a complaint represents the\n  entire organisation.\n- Treat serious allegations as unverified employee\n  reports requiring appropriate investigation.\n- If evidence is insufficient, explicitly state so.\n- Do not invent company-wide statistics.\n\n\nOUTPUT FORMAT:\n\n1. EXECUTIVE SUMMARY\n\nProvide an overview of the company's employee\nsentiment and overall HR position.\n\n2. POSITIVE THEMES\n\nFor each theme include:\n- Theme\n- Number of unique supporting reviews\n- Supporting review IDs\n- Explanation\n- Business implications\n\n3. NEGATIVE THEMES\n\nFor each theme include:\n- Theme\n- Number of unique supporting reviews\n- Supporting review IDs\n- Explanation\n- Business implications\n\n4. QUANTITATIVE HR ANALYSIS\n\nInclude:\n- Average overall rating\n- Average ratings by HR category\n- Rating distribution\n- Employee recommendation sentiment\n- Business outlook sentiment\n\nInterpret the figures using the available\nresponse counts.\n\n5. KEY HR CONCERNS\n\nIdentify and explain the most significant\norganisational concerns.\n\n6. EMPLOYEE RETENTION AND ATTRITION RISKS\n\nIdentify potential retention risks and explain\nthe supporting evidence.\n\n7. ISOLATED ISSUES\n\nHighlight individual complaints that do not\nyet demonstrate a recurring pattern.\n\n8. PRIORITISED HR RECOMMENDATIONS\n\nProvide practical recommendations.\n\nFor each recommendation include:\n- Priority (High, Medium, Low)\n- HR concern\n- Recommended action\n- Expected outcome\n\n9. OVERALL COMPANY HEALTH ASSESSMENT\n\nProvide an evidence-based assessment of the\ncompany's employee experience.\n\nDistinguish strengths, weaknesses and areas\nrequiring further investigation.\n\nFINAL INSTRUCTION:\n\nBase all conclusions on the supplied batch\nanalyses and quantitative statistics.\n\nClearly distinguish quantitative findings,\nqualitative findings and professional\ninterpretations.\n\nDo not present potential risks as confirmed\norganisational problems.\n\n\nQUANTITATIVE INTERPRETATION:\n\n1. Calculate recommendation percentages using\n   answered responses only.\n\n2. Calculate business outlook percentages using\n   answered responses only.\n\n3. Always disclose the number of missing responses.\n\n4. Do not assume all 138 reviews contain\n   responses for every rating category.\n\n5. When comparing rating categories, disclose\n   their respective response counts.\n\n6. Do not invent external industry benchmarks.\n\n7. Explain discrepancies between numerical ratings\n   and written employee feedback without assuming\n   that one invalidates the other.\n\n\nREVIEW ID VERIFICATION:\n\nThe original employee reviews are the authoritative\nsource of evidence.\n\nBatch-level AI analyses are secondary analytical\nsummaries, not independently verified evidence.\n\nWhen supporting review IDs are provided:\n- Extract the IDs exactly as supplied.\n- Deduplicate IDs across all seven batches.\n- Verify that each ID is associated with the\n  relevant theme in the supplied evidence.\n- Do not assume that an ID appearing in a batch\n  summary automatically proves the associated theme.\n- If the original review text is unavailable,\n  disclose this limitation.\n\nNever claim independent verification when only\nAI-generated batch summaries are available.\n\n### DATA VALIDATION AND EVIDENCE RULES\n\nBefore producing the final report, perform the following validation checks:\n\n1. **Review ID deduplication**\n   - Remove duplicate review IDs within each individual theme.\n   - Recalculate the number of unique supporting reviews after deduplication.\n   - Ensure the reported count exactly matches the number of unique IDs listed.\n   - A review ID may legitimately appear under multiple themes if it supports multiple distinct findings.\n\n2. **Evidence accuracy**\n   - Only include review IDs supplied in the batch analyses.\n   - Do not invent, modify or infer review IDs.\n   - Do not introduce new findings that are not supported by the supplied analyses.\n   - Clearly distinguish positive feedback, negative feedback and mixed experiences.\n\n3. **Quantitative accuracy**\n   - Preserve all supplied average ratings and response counts.\n   - Calculate percentages using the number of valid responses, excluding missing responses.\n   - Do not interpret missing responses as positive, negative or neutral.\n   - Do not introduce unsupported statistical conclusions.\n\n4. **HR interpretation**\n   - Distinguish employee-reported experiences from AI-generated interpretations.\n   - Describe retention and attrition as potential risks unless actual turnover data is provided.\n   - Do not present employee allegations as established facts.\n   - Recommend investigation where serious employee concerns are reported, regardless of frequency.\n\n5. **Final validation**\n   - Verify all theme counts against their supporting review ID lists.\n   - Check that quantitative figures match the original input.\n   - Ensure recommendations are traceable to identified HR concerns.\n   - Explicitly flag insufficient evidence rather than filling gaps with assumptions.\n\n\n",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        192,
+        320
+      ],
+      "id": "a845bde9-8a50-4948-8568-a589bcaa8536",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        512
+      ],
+      "id": "1eeebbf0-04ab-46c9-934d-ddb6c7c550ad",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1904,
+        80
+      ],
+      "id": "fe1ca15a-ef8d-4847-bb25-7ffd38d9abec",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "5489054b-8047-41c0-887a-d630615a4048",
+              "leftValue": "={{ $json.validation_passed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        768,
+        320
+      ],
+      "id": "c304556b-8736-4378-8e1a-103909668dce",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst items = $input.all();\n\nreturn items.map((item) => {\n\n  const report = item.json.text;\n\n  const errors = [];\n  const warnings = [];\n  const themeResults = [];\n\n  // --------------------------------------------------\n  // 1. CHECK THAT THE REPORT EXISTS\n  // --------------------------------------------------\n\n  if (typeof report !== \"string\" || !report.trim()) {\n    return {\n      json: {\n        company: \"Unknown\",\n        validation_passed: false,\n        validation_status: \"FAILED\",\n        total_themes_checked: 0,\n        validation_errors: [\"Report is missing or empty.\"],\n        validation_warnings: [],\n        theme_validation: [],\n        original_report: report ?? null\n      }\n    };\n  }\n\n  // --------------------------------------------------\n  // 2. EXTRACT COMPANY NAME\n  // --------------------------------------------------\n\n  const companyMatch = report.match(\n    /employee experience at ([^,]+)/i\n  );\n\n  const company = companyMatch\n    ? companyMatch[1].trim()\n    : \"Unknown\";\n\n  // --------------------------------------------------\n  // 3. CHECK REQUIRED REPORT SECTIONS\n  // --------------------------------------------------\n\n  const requiredSections = [\n    \"EXECUTIVE SUMMARY\",\n    \"POSITIVE THEMES\",\n    \"NEGATIVE THEMES\",\n    \"QUANTITATIVE HR ANALYSIS\",\n    \"KEY HR CONCERNS\",\n    \"EMPLOYEE RETENTION AND ATTRITION RISKS\",\n    \"ISOLATED ISSUES\",\n    \"PRIORITISED HR RECOMMENDATIONS\",\n    \"OVERALL COMPANY HEALTH ASSESSMENT\"\n  ];\n\n  for (const section of requiredSections) {\n\n    if (!report.toUpperCase().includes(section)) {\n      errors.push(`Missing section: ${section}`);\n    }\n\n  }\n\n  // --------------------------------------------------\n  // 4. EXTRACT POSITIVE AND NEGATIVE THEME SECTIONS\n  // --------------------------------------------------\n\n  const positiveHeading = /^#\\s*2\\.\\s*POSITIVE THEMES\\s*$/im;\n  const negativeHeading = /^#\\s*3\\.\\s*NEGATIVE THEMES\\s*$/im;\n  const quantitativeHeading =\n    /^#\\s*4\\.\\s*QUANTITATIVE HR ANALYSIS\\s*$/im;\n\n  const positiveMatch = positiveHeading.exec(report);\n  const negativeMatch = negativeHeading.exec(report);\n  const quantitativeMatch = quantitativeHeading.exec(report);\n\n  if (\n    !positiveMatch ||\n    !negativeMatch ||\n    !quantitativeMatch\n  ) {\n\n    errors.push(\n      \"Could not locate positive/negative theme sections.\"\n    );\n\n  } else {\n\n    const positiveSection = report.slice(\n      positiveMatch.index,\n      negativeMatch.index\n    );\n\n    const negativeSection = report.slice(\n      negativeMatch.index,\n      quantitativeMatch.index\n    );\n\n    const sections = [\n      {\n        type: \"Positive\",\n        content: positiveSection\n      },\n      {\n        type: \"Negative\",\n        content: negativeSection\n      }\n    ];\n\n    // --------------------------------------------------\n    // 5. VALIDATE EACH THEME\n    // --------------------------------------------------\n\n    for (const section of sections) {\n\n      // Match headings such as:\n      // ### (A) Supportive, Collaborative Culture\n\n      const themeRegex =\n        /^###\\s+\\(([A-Z])\\)\\s+(.+)$/gim;\n\n      const headings = [\n        ...section.content.matchAll(themeRegex)\n      ];\n\n      if (headings.length === 0) {\n\n        errors.push(\n          `No themes found in ${section.type} Themes section.`\n        );\n\n      }\n\n      for (let i = 0; i < headings.length; i++) {\n\n        const heading = headings[i];\n\n        const start =\n          heading.index + heading[0].length;\n\n        const end =\n          i + 1 < headings.length\n            ? headings[i + 1].index\n            : section.content.length;\n\n        const block = section.content.slice(start, end);\n\n        // Extract stated review count.\n        // Supports Markdown bold formatting.\n\n        const countMatch = block.match(\n          /\\*\\*Unique Supporting Reviews:\\*\\*\\s*(\\d+)/i\n        );\n\n        const statedCount = countMatch\n          ? Number(countMatch[1])\n          : null;\n\n        // Extract supporting review IDs.\n\n        const idMatch = block.match(\n          /Supporting Review IDs:\\s*([\\s\\S]*?)(?=\\n\\s*-\\s*\\*\\*Explanation\\*\\*|\\n\\s*-\\s*\\*\\*Business Implications\\*\\*|\\n###|$)/i\n        );\n\n        const idsText = idMatch\n          ? idMatch[1]\n          : \"\";\n\n        // Extract numeric review IDs.\n\n        const ids =\n          idsText.match(/\\b\\d{6,}\\b/g) || [];\n\n        // Remove duplicate IDs.\n\n        const uniqueIds = [...new Set(ids)];\n\n        // Identify duplicate IDs.\n\n        const duplicates = [...new Set(\n          ids.filter(\n            (id, index) => ids.indexOf(id) !== index\n          )\n        )];\n\n        // Detect representative samples.\n\n        const isSample =\n          /representative sample|\\bsample:/i.test(idsText);\n\n        // --------------------------------------------------\n        // 6. RECORD VALIDATION RESULTS\n        // --------------------------------------------------\n\n        if (statedCount === null) {\n\n          warnings.push(\n            `${section.type} Theme ${heading[1]}: review count not found.`\n          );\n\n        }\n\n        if (!idMatch || ids.length === 0) {\n\n          warnings.push(\n            `${section.type} Theme ${heading[1]}: no review IDs supplied.`\n          );\n\n        }\n\n        if (duplicates.length > 0) {\n\n          errors.push(\n            `${section.type} Theme ${heading[1]}: duplicate IDs found: ${\n              duplicates.join(\", \")\n            }`\n          );\n\n        }\n\n        if (isSample) {\n\n          warnings.push(\n            `${section.type} Theme ${heading[1]}: representative IDs only; full review count cannot be independently verified.`\n          );\n\n        }\n\n        // Store results for this theme.\n\n        themeResults.push({\n\n          category: section.type,\n\n          theme: heading[1],\n\n          theme_name: heading[2].trim(),\n\n          stated_review_count: statedCount,\n\n          supplied_id_count: ids.length,\n\n          unique_supplied_id_count: uniqueIds.length,\n\n          duplicate_ids: duplicates,\n\n          count_verifiable:\n            !isSample && statedCount !== null,\n\n          sample_only: isSample\n\n        });\n\n      }\n\n    }\n\n  }\n\n  // --------------------------------------------------\n  // 7. FINAL VALIDATION RESULT\n  // --------------------------------------------------\n\n  const passed = errors.length === 0;\n\n  return {\n\n    json: {\n\n      company,\n\n      validation_passed: passed,\n\n      validation_status: passed\n        ? \"PASSED\"\n        : \"FAILED\",\n\n      total_themes_checked: themeResults.length,\n\n      validation_errors: errors,\n\n      validation_warnings: warnings,\n\n      theme_validation: themeResults,\n\n      original_report: report\n\n    }\n\n  };\n\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        320
+      ],
+      "id": "cd4e5f3e-0926-46e4-b3ef-990759e86c0e",
+      "name": "Validate HR Report"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\nYou are an HR report quality-control editor.\n\nYour task is to correct the HR report using the validation results provided below.\n\nCOMPANY:\n{{ $json.company }}\n\nORIGINAL HR REPORT:\n{{ $json.original_report }}\n\nVALIDATION ERRORS:\n{{ JSON.stringify($json.validation_errors) }}\n\nVALIDATION WARNINGS:\n{{ JSON.stringify($json.validation_warnings) }}\n\nTHEME VALIDATION DETAILS:\n{{ JSON.stringify($json.theme_validation) }}\n\nINSTRUCTIONS:\n\n1. Review the original HR report and identify the duplicate review IDs listed in the validation errors.\n\n2. Within each affected theme, remove repeated occurrences of the same review ID. Keep one occurrence of each unique ID.\n\n3. Do not invent, fabricate, or substitute review IDs.\n\n4. Do not change the stated review counts merely to match the number of representative IDs supplied.\n\n5. The review IDs provided are representative samples, not necessarily the complete supporting review lists. Preserve this distinction in the report.\n\n6. Do not change any quantitative company statistics, average ratings, rating distributions, recommendation percentages, or business outlook figures.\n\n7. Do not change the original qualitative findings, positive themes, negative themes, business implications, or HR recommendations unless a correction is strictly necessary.\n\n8. Do not introduce new findings or claims that are not supported by the original report.\n\n9. Preserve the original report's headings, structure, and Markdown formatting.\n\n10. If an issue cannot be corrected using the supplied information, leave the underlying information unchanged rather than guessing.\n\nOUTPUT REQUIREMENT:\n\nReturn the complete corrected HR report in Markdown.\n\nDo not include an introduction, explanation of your corrections, or commentary outside the report.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1088,
+        336
+      ],
+      "id": "feec4478-733a-496d-ae9f-e135fc2addc9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1088,
+        544
+      ],
+      "id": "2ba79154-1f5c-4ada-95ba-5e57d57f8546",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "694d6c63-7bdd-4e82-81ea-d7648fd4eb04",
+              "leftValue": "={{ $json.validation_passed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1680,
+        336
+      ],
+      "id": "d8b8cb35-5d5d-48b2-b232-d748e5d192b3",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "=original_report",
+        "options": {
+          "fileName": "Castlery_HR_Report.md"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.2,
+      "position": [
+        2064,
+        320
+      ],
+      "id": "ff66a35b-5575-44f8-b206-3375a93f8609",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "content": "## Input Glassdoor URL\n\nSelect Company [Click Me](https://www.glassdoor.sg/Community/index.htm) on Glassdoor, limited to first 200 reviews \n",
+        "width": 304,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -192
+      ],
+      "id": "05fb8264-2ffa-41b5-8cb5-4bed1028668e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## API to Glassdoor \n\nScrapes Glassdoor  for the past 200 reviews and consolidate it as 1 JSON file. \n",
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        496,
+        -208
+      ],
+      "id": "40b643af-4260-46b6-9873-f8ca86ce86d1",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst items = $input.all();\n\nreturn items.map(item => {\n  // 1. Extract the report from the AI Agent output\n  const report = item.json.output ?? item.json.text ?? \"\";\n\n  const errors = [];\n  const warnings = [];\n  const themeValidation = [];\n\n  // 2. Check that a report was received\n  if (typeof report !== \"string\" || report.trim() === \"\") {\n    return {\n      json: {\n        company: item.json.company ?? \"Unknown\",\n        validation_passed: false,\n        validation_status: \"FAILED\",\n        validation_errors: [\"No report text found in output or text field.\"],\n        validation_warnings: [],\n        theme_validation: [],\n        original_report: \"\"\n      }\n    };\n  }\n\n  // 3. Extract company name\n  const companyMatch = report.match(\n    /employee experience at ([^,]+)/i\n  );\n\n  const company = companyMatch\n    ? companyMatch[1].trim()\n    : item.json.company ?? \"Unknown\";\n\n  // 4. Check required report sections\n  const requiredSections = [\n    \"EXECUTIVE SUMMARY\",\n    \"POSITIVE THEMES\",\n    \"NEGATIVE THEMES\",\n    \"QUANTITATIVE HR ANALYSIS\",\n    \"KEY HR CONCERNS\",\n    \"EMPLOYEE RETENTION AND ATTRITION RISKS\",\n    \"ISOLATED ISSUES\",\n    \"PRIORITISED HR RECOMMENDATIONS\",\n    \"OVERALL COMPANY HEALTH ASSESSMENT\",\n    \"Closing Remarks\"\n  ];\n\n  for (const section of requiredSections) {\n    if (!report.toLowerCase().includes(section.toLowerCase())) {\n      errors.push(`Missing required section: ${section}`);\n    }\n  }\n\n  // 5. Extract positive and negative theme sections\n  const positiveStart = report.indexOf(\"# 2. POSITIVE THEMES\");\n  const negativeStart = report.indexOf(\"# 3. NEGATIVE THEMES\");\n  const quantitativeStart = report.indexOf(\"# 4. QUANTITATIVE HR ANALYSIS\");\n\n  if (positiveStart === -1 || negativeStart === -1 ||\n      quantitativeStart === -1) {\n    errors.push(\"Could not locate the positive, negative or quantitative sections.\");\n  } else {\n\n    const positiveSection = report.slice(\n      positiveStart,\n      negativeStart\n    );\n\n    const negativeSection = report.slice(\n      negativeStart,\n      quantitativeStart\n    );\n\n    const sections = [\n      { category: \"Positive\", content: positiveSection },\n      { category: \"Negative\", content: negativeSection }\n    ];\n\n    // 6. Validate each individual theme\n    for (const section of sections) {\n\n      const themeRegex =\n        /###\\s*\\(([A-Z])\\)\\s*(.+)/g;\n\n      const matches = [...section.content.matchAll(themeRegex)];\n\n      for (let i = 0; i < matches.length; i++) {\n\n        const match = matches[i];\n        const themeLetter = match[1];\n        const themeName = match[2].trim();\n\n        const themeStart = match.index + match[0].length;\n\n        const themeEnd = i + 1 < matches.length\n          ? matches[i + 1].index\n          : section.content.length;\n\n        const themeContent = section.content.slice(\n          themeStart,\n          themeEnd\n        );\n\n        // Extract stated review count\n        const countMatch = themeContent.match(\n          /\\*\\*Unique Supporting Reviews:\\*\\*\\s*(\\d+)/i\n        );\n\n        const statedCount = countMatch\n          ? Number(countMatch[1])\n          : null;\n\n        if (statedCount === null) {\n          errors.push(\n            `${section.category} Theme ${themeLetter}: missing stated review count.`\n          );\n        }\n\n        // Extract supporting review ID block\n        const idBlockMatch = themeContent.match(\n          /\\*\\*Supporting Review IDs:\\*\\*([\\s\\S]*?)(?=\\n\\s*-\\s*\\*\\*Explanation:|$)/i\n        );\n\n        const idBlock = idBlockMatch\n          ? idBlockMatch[1]\n          : \"\";\n\n        // Find numeric review IDs\n        const ids = idBlock.match(/\\b\\d{5,10}\\b/g) || [];\n\n        const uniqueIds = [...new Set(ids)];\n\n        // Find duplicate IDs\n        const seen = new Set();\n        const duplicates = new Set();\n\n        for (const id of ids) {\n          if (seen.has(id)) {\n            duplicates.add(id);\n          }\n          seen.add(id);\n        }\n\n        const duplicateIds = [...duplicates];\n\n        if (!idBlockMatch || ids.length === 0) {\n          errors.push(\n            `${section.category} Theme ${themeLetter}: no supporting review IDs found.`\n          );\n        }\n\n        if (duplicateIds.length > 0) {\n          errors.push(\n            `${section.category} Theme ${themeLetter}: duplicate IDs found: ${duplicateIds.join(\", \")}`\n          );\n        }\n\n        // Determine whether IDs are representative samples\n        const sampleOnly =\n          /\\b(sample|representative)\\b/i.test(idBlock);\n\n        // Check count consistency only when a complete list is claimed\n        if (\n          statedCount !== null &&\n          !sampleOnly &&\n          statedCount !== uniqueIds.length\n        ) {\n          errors.push(\n            `${section.category} Theme ${themeLetter}: stated count (${statedCount}) does not match unique supplied IDs (${uniqueIds.length}).`\n          );\n        }\n\n        // Representative samples cannot independently verify full counts\n        if (sampleOnly) {\n          warnings.push(\n            `${section.category} Theme ${themeLetter}: representative IDs only; full review count cannot be independently verified.`\n          );\n        }\n\n        themeValidation.push({\n          category: section.category,\n          theme: themeLetter,\n          theme_name: themeName,\n          stated_review_count: statedCount,\n          supplied_id_count: ids.length,\n          unique_supplied_id_count: uniqueIds.length,\n          duplicate_ids: duplicateIds,\n          count_verifiable: !sampleOnly,\n          sample_only: sampleOnly\n        });\n      }\n    }\n  }\n\n  // 7. Final validation result\n  const validationPassed = errors.length === 0;\n\n  return {\n    json: {\n      company,\n      validation_passed: validationPassed,\n      validation_status: validationPassed ? \"PASSED\" : \"FAILED\",\n      total_themes_checked: themeValidation.length,\n      validation_errors: errors,\n      validation_warnings: warnings,\n      theme_validation: themeValidation,\n      original_report: report\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        336
+      ],
+      "id": "2dd1db9c-22ba-45f3-9ee9-e450feecd911",
+      "name": "2nd Validation of HR Report"
+    },
+    {
+      "parameters": {
+        "content": "## Import Reviews to Clean and Batch \n\n- Here we use JavaScript to clean the incoming data. \n- Split into Batches of 20 items per batch containing Qualitative data \n- Extract review data into Quantitative data ",
+        "height": 224,
+        "width": 272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        912,
+        -336
+      ],
+      "id": "06caf070-004b-4bcc-88b7-2fd2bc01caff",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Parse both Quantitative and Qualitative data for consolidation \n\nAI checks both reviews for themes,  employee experiences, feedback etc. Output is merged for later processing. ",
+        "height": 144,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        -64
+      ],
+      "id": "e52ba604-431b-420e-87bf-06255bb4586c",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## AI Agent checks the HR Report and Validates\n\nEnsures only actual employee feedback and comments are used for Analysis ",
+        "height": 144,
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        624,
+        496
+      ],
+      "id": "7868aefd-963e-40c4-97f7-269adac0ac21",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Glassdoor HR Insights (Company URL) ": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor": {
+      "main": [
+        [
+          {
+            "node": "Get dataset items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get dataset items": {
+      "main": [
+        [
+          {
+            "node": "Clean Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Reviews": {
+      "main": [
+        [
+          {
+            "node": "Calculate Company Statistics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Batch Reviews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Company Statistics": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Batch Reviews": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Consolidate Batch Analyses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidate Batch Analyses": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Validate HR Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate HR Report": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "2nd Validation of HR Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2nd Validation of HR Report": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f879d672-858e-463a-b349-2f8ce0826b7a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cc4b5a202ff552e5d903bde8537bee175b36ae8a2147ca6a369e9049eeddff75"
+  },
+  "nodeGroups": [],
+  "id": "jyTnlC6ccUn4QxUv",
+  "tags": []
+}
